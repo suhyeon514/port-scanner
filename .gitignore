@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Data & Database (Large files or Generated)
+data/*.json
+data/*.db
+
+# Logs & Results (Sensitive scan data)
+logs/
+results/
+open_ports.json
+
+# OS specific
+.DS_Store
+
+# Local Test Scripts
+db_test.py
+test_vulners.py
