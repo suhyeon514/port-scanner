@@ -9,18 +9,22 @@ from config import (
     NMAP_STABLE_ARGS,
     NMAP_SCRIPT_TIMEOUT,
     NMAP_VERSION_SCAN_ARGS,
-    VULNERS_API_KEY
+    VULNERS_API_KEY,
+    NVD_API_KEY
 )
 from core.dispatcher import get_scripts_for_service
 from utils.parser import clean_script_output
 from utils.cve_lookup import find_cves_by_cpe
-from cve.scanner import VulnScanner  # [변경] 분리된 CVE 스캐너 모듈 임포트
+from cve.scanner import VulnScanner, NvdScanner, LocalScanner  # [변경] NvdScanner 추가 임포트
+
 
 
 class Phase3Engine:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.vuln_scanner = VulnScanner()
+        self.nvd_scanner = NvdScanner() # NvdScanner 초기화
+        self.local_scanner = LocalScanner() # LocalScanner 초기화
         self.logger.info("VulnScanner initialized in Phase3Engine.")
 
     def _normalize_port_data(self, open_ports):
@@ -166,6 +170,13 @@ class Phase3Engine:
             result["cpe"] = port_data.get("cpe", "")
             result["extrainfo"] = port_data.get("extrainfo", "")
             
+            # Convert CPE to v2.3 format if available
+            raw_cpe = port_data.get("cpe", "")
+            if raw_cpe.startswith("cpe:/"):
+                result["cpe"] = raw_cpe.replace("cpe:/", "cpe:2.3:")
+            else:
+                result["cpe"] = raw_cpe
+            
             try:
                 result["confidence"] = int(port_data.get("conf", 0))
             except (ValueError, TypeError):
@@ -239,15 +250,68 @@ class Phase3Engine:
         # -----------------------------------------------------------
         # Step 4: 결과 패키징 및 취약점 통합
         # -----------------------------------------------------------
- 
+        logger.info(f"[{port}/{protocol}] Step 4: CVE Lookup started.")
+                    
+        logger.info(f"[{port}] Starting CVE lookup for {result['product']} {result['version']} CPE: {result['cpe']}")
         try:
-            vulns = self.vuln_scanner.get_vulnerabilities(
-                product=result["product"],
-                version=result["version"],
+            logger.info(f"[{port}] Querying NvdScanner for vulnerabilities.")
+            # NVD API 검색 및 결과 통합
+            if result["product"]:
+                nvd_vulns = self.nvd_scanner.get_vulnerabilities(
+                    product=result["product"],
+                    version=result["version"],
+                    cpe=result["cpe"]
+                )
+
+                # 중복 제거 및 병합 (CVE ID 기준)
+                existing_ids = {v['id'] for v in result["vulnerabilities"]}
+                for nv in nvd_vulns:
+                    if nv['id'] not in existing_ids:
+                        result["vulnerabilities"].append(nv)
+                        existing_ids.add(nv['id'])
+                logger.info(f"[{port}] NvdScanner found {len(nvd_vulns)} vulnerabilities.")
+
+            # 로컬 DB 검색 및 결과 통합
+            logger.info(f"[{port}] Querying LocalScanner for vulnerabilities.")
+            local_vulns = self.local_scanner.search_vulnerabilities_by_cpe(
                 cpe=result["cpe"]
             )
-            result["vulnerabilities"] = vulns
-            logger.info(f"[{port}] Found {len(vulns)} vulnerabilities")
+
+            for lv in local_vulns:
+                if lv['id'] not in existing_ids:
+                    result["vulnerabilities"].append(lv)
+                    existing_ids.add(lv['id'])
+
+            #cve 검색 결과 로그, vulnerabilities 키의 ID 값을 기준으로 vulners api 에 요청
+            # logger.info(f"[{port}] Existing CVE IDs after NVD and Local DB: {existing_ids}")
+
+            # # local과 nvd api를 사용 했음에도 결과가 없을 때만 Vulners API 사용
+            # if not result["vulnerabilities"]:
+            #     # Vulners API 및 로컬 DB 검색
+            #     logger.info(f"[{port}] Querying VulnScanner for vulnerabilities.")
+
+            #     # 이미 수집된 CVE ID를 필터링
+            #     existing_ids = {v['id'] for v in result["vulnerabilities"]}
+            #     logger.info(f"[{port}] Existing CVE IDs before VulnScanner: {existing_ids}")
+            #     # Vulners API 호출
+            #     vulns = self.vuln_scanner.get_vulnerabilities(
+            #         product=result["product"],
+            #         version=result["version"],
+            #         cpe=result["cpe"],
+            #         existing_ids=existing_ids
+            #     )
+
+            #     # 중복되지 않은 취약점만 추가
+            #     for vuln in vulns:
+            #         if vuln['id'] not in existing_ids:
+            #             result["vulnerabilities"].append(vuln)
+            #             existing_ids.add(vuln['id'])
+
+            #     logger.info(f"[{port}] VulnScanner found {len(vulns)} vulnerabilities.")
+
+            
+
+            logger.info(f"[{port}] Found {len(result['vulnerabilities'])} vulnerabilities (Total)")
         except Exception as e:
             logger.error(f"[{port}] CVE lookup error: {e}")
             

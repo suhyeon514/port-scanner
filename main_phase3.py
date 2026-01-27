@@ -9,7 +9,7 @@ import time  # 스캔 시간 측정을 위한 모듈 추가
 from core.engine import Phase3Engine
 from utils.logger import setup_logger # [추가] 로거 설정 함수
 
-INPUT_FILE = "open_ports.json"
+
 OUTPUT_FILE = "results/phase3_report.json"
 
 def load_input_data(filename):
@@ -22,6 +22,27 @@ def load_input_data(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         data = json.load(f)
         logging.info(f"Loaded input data from {filename}") # [추가]
+        
+        # [변경] Phase 1/2 결과 리포트(hosts 구조) 지원
+        if "hosts" in data:
+            # 첫 번째 호스트를 대상으로 설정 (단일 IP 스캔 기준)
+            if not data["hosts"]:
+                return None, []
+            
+            host_info = data["hosts"][0]
+            target_ip = host_info.get("address")
+            
+            # state가 'open'인 포트만 추출 및 구조 변환
+            open_ports = []
+            for p in host_info.get("ports", []):
+                if p.get("state") == "open":
+                    # proto -> protocol 매핑 및 phase2 정보 포함
+                    port_entry = {"port": p.get("port"), "protocol": p.get("proto"), "prior_scan_info": p.get("phase2")}
+                    open_ports.append(port_entry)
+            
+            return target_ip, open_ports
+        
+        # 기존 open_ports.json 구조 지원
         return data.get('target_ip'), data.get('open_ports', [])
 
 def save_output_data(filename, data):
@@ -39,11 +60,19 @@ if __name__ == "__main__":
     log_file = setup_logger()
     print(f"[*] Logging started. Check details in: {log_file}")
     
+    # [변경] 커맨드 라인에서 입력 파일 경로를 받음
+    if len(sys.argv) > 1:
+        input_file = sys.argv[1]
+    else:
+        print("[!] Error: Please provide the path to the Phase 1/2 JSON report as an argument.")
+        logging.error("No input file provided via command-line argument.")
+        sys.exit(1)
+
     print("=== Phase 3 Service Enumeration Scanner ===")
     logging.info("=== Phase 3 Scanner Started ===") # [추가]
     
     # 2. 데이터 로드 (전제조건: 1,2단계 완료)
-    target_ip, open_ports = load_input_data(INPUT_FILE)
+    target_ip, open_ports = load_input_data(input_file)
     
     # 스캔 시작 시간 기록
     start_time = time.time()
@@ -55,6 +84,21 @@ if __name__ == "__main__":
         engine = Phase3Engine()
         scan_results = engine.run(target_ip, open_ports)
         
+        # [추가] Phase 2 정보(prior_scan_info)를 결과에 병합
+        # 포트와 프로토콜을 키로 사용하여 입력 데이터 매핑
+        input_port_map = {
+            (p.get('port'), p.get('protocol')): p 
+            for p in open_ports
+        }
+
+        for result in scan_results:
+            p_key = (result.get('port'), result.get('protocol'))
+            if p_key in input_port_map:
+                src_data = input_port_map[p_key]
+                # prior_scan_info(phase2)가 존재하고 유효한 경우 결과에 추가
+                if src_data.get('prior_scan_info'):
+                    result['prior_scan_info'] = src_data['prior_scan_info']
+
         # 4. 결과 저장 (4단계 전달용)
         final_report = {
             "target_ip": target_ip,

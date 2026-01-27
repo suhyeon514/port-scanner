@@ -10,11 +10,13 @@ NMAP_STABLE_ARGS = "-Pn -T3 --max-retries 3 --open"
 NMAP_SCRIPT_TIMEOUT = 180
 NMAP_VERSION_SCAN_ARGS = "-sV --version-all"
 
+
 # --- [Vulners API 설정] ---
 # 환경변수 VULNERS_API_KEY가 있으면 사용, 없으면 빈 문자열 (API 비활성화)
 # 보안을 위해 하드코딩된 키 제거 -> 환경변수 또는 빈 값 사용 권장
-VULNERS_API_KEY = os.getenv("VULNERS_API_KEY", "")
-
+# VULNERS_API_KEY = os.getenv("VULNERS_API_KEY", "")
+VULNERS_API_KEY = "R0DZ9RNH8QW1K2VJ2XPQ1VIECN0CHLX6GW9L6OA1AO1D9XMTE9P8SBE1OV8SJ7VS"
+NVD_API_KEY="fc3bb526-cb2f-4786-af2e-1da3cb828a17"
 # --- [Local NVD 설정] ---
 # API 실패 시 사용할 로컬 NVD 데이터 폴더 경로 (현재 디렉토리의 data 폴더)
 NVD_DATA_DIR = os.path.join(os.getcwd(), "data")
@@ -87,6 +89,10 @@ NSE_MAPPING = {
 
     # ✅ CUPS/IPP (631 or 9631 등, http로 인식 안 될 경우 대비)
     'ipp': 'cups-info',
+
+    # ✅ PPP (3000 등)
+    # Nmap 기본 테이블에서 3000번을 ppp로 인식하지만, 실제로는 대부분 HTTP(Node.js/React)입니다.
+    'ppp': 'http-title,http-headers,http-methods,http-enum,banner',
 
     # ✅ Ruby DRb (8787) — 실제 스크립트 이름 확인 후 교체
     # 예시: 'drb': 'druby-info'
