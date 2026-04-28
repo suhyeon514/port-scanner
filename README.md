@@ -92,17 +92,21 @@ pip install vulners
 ### 🛠️ 설치 (Installation)
 
 **1. 저장소 클론**
+```
 git clone https://github.com/suhyeon514/port-scanner.git
 cd port-scanner
+```
 
 **2. 의존성 설치**
+```
 pip install pyyaml python-nmap scapy requests
+```
 
 **3. Phase 3 설정 파일 생성 (필수 — 저장소에 포함되지 않음)**
 
-저장소에는 보안 상의 이유로 `config.py` 파일이 포함되어 있지 않습니다. 프로젝트를 실행하려면 `Service_Scanner_Phase3` 디렉토리 내에 직접 `config.py` 파일을 생성해야 합니다. 
+* 저장소에는 보안 상의 이유로 `config.py` 파일이 포함되어 있지 않습니다. 프로젝트를 실행하려면 `Service_Scanner_Phase3` 디렉토리 내에 직접 `config.py` 파일을 생성해야 합니다. 
 
-> **⚠️ 보안 주의 (Security Warning):** > 실제 API 키를 코드에 하드코딩한 채로 Git에 푸시하지 마세요. `config.py`는 이미 `.gitignore`에 등록되어 있어야 합니다. 안전한 관리를 위해 환경 변수(`os.getenv`) 사용을 권장합니다.
+* > **⚠️ 보안 주의 (Security Warning):** > 실제 API 키를 코드에 하드코딩한 채로 Git에 푸시하지 마세요. `config.py`는 이미 `.gitignore`에 등록되어 있어야 합니다. 안전한 관리를 위해 환경 변수(`os.getenv`) 사용을 권장합니다.
 
 아래의 템플릿을 복사하여 `config.py`를 생성해 주세요.
 
