@@ -4,9 +4,9 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import json
-import logging # [추가] 로깅 모듈
 import time  # 스캔 시간 측정을 위한 모듈 추가
 from core.engine import Phase3Engine
+import logging # [추가] 로깅 모듈
 from utils.logger import setup_logger # [추가] 로거 설정 함수
 
 

@@ -1,0 +1,71 @@
+# profiles.yaml
+version: 1
+
+profiles:
+  # ====================================
+  # 1) ext_discovery
+  # 외부 자산용 / 의미있는 포트 ~50개 / 빠른 역할 라벨 + 고위험 포트 탐지
+  # ====================================
+  ext_discovery:
+    description: "외부 자산용 1차 Discovery. 의미있는 상위 포트 ~50개만 빠르게 스캔해 고위험 서비스 후보 찾음"
+    target_defaults:
+      tcp:
+        include_groups: ["web", "db", "remote_admin", "mail"]
+        include_sets: []
+        exclude_groups: []
+      udp:
+        include_groups: ["vpn_udp"]
+        exclude_groups: []
+      host_discovery: "limited"
+      dns_resolution: "on"
+    nmap_policy:
+      timing_profile: "fast"
+      max_retries: 1
+      scripts:
+        allowlist: []
+
+  # ====================================
+  # 2) int_discovery
+  # 내부 자산용 / well-known + infra + 내부에서 흔한 포트 ~70~100개
+  # 내부 서버 역할/베이스라인 파악
+  # ====================================
+  int_discovery:
+    description: "내부 자산용 Discovery. well-known + infra + 내부에서 흔한 포트 ~70~100개 스캔해 서버 역할/베이스라인 빠르게 파악"
+    target_defaults:
+      tcp:
+        include_groups: ["web", "db", "remote_admin", "mail", "infra", "directory", "monitoring"]
+        include_sets: []
+        exclude_groups: []
+      udp:
+        include_groups: ["core_udp_internal", "vpn_udp"]
+        exclude_groups: []
+      host_discovery: "on"
+      dns_resolution: "on"
+    nmap_policy:
+      timing_profile: "balanced"
+      max_retries: 2
+      scripts:
+        allowlist: []
+
+  # ====================================
+  # 3) discovery_1k
+  # 외부/내부 공통의 강화 Discovery
+  # 온보딩 / 특정 구간 깊게 볼 때만 제한적으로 사용
+  # ====================================
+  discovery_1k:
+    description: "외부/내부 공통 1-1024 full Discovery. 온보딩 / 특정 구간 깊게 볼 때 사용하는 강화 Discovery 프로파일"
+    target_defaults:
+      tcp:
+        include_sets: ["tcp_1_1024"]
+        include_groups: ["web", "db", "remote_admin", "mail", "infra", "directory", "monitoring"]
+        exclude_groups: []
+      udp:
+        include_groups: ["core_udp_internal", "vpn_udp"]
+        exclude_groups: []
+      host_discovery: "auto"
+      dns_resolution: "on"
+    nmap_policy:
+      timing_profile: "balanced"
+      max_retries: 3
+      scripts:
+        allowlist: []

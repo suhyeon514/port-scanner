@@ -13,6 +13,7 @@ data/*.db
 logs/
 results/
 open_ports.json
+config.py
 
 # OS specific
 .DS_Store
@@ -20,3 +21,7 @@ open_ports.json
 # Local Test Scripts
 db_test.py
 test_vulners.py
+
+Service_Scanner_Phase1_2/runs/*
+Service_Scanner_Phase3/data/*
+nvd_vuln*
