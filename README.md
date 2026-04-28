@@ -91,39 +91,97 @@ pip install vulners
 
 ### 🛠️ 설치 (Installation)
 
-# 1. 저장소 클론
+**1. 저장소 클론**
 git clone https://github.com/suhyeon514/port-scanner.git
 cd port-scanner
 
-# 2. 의존성 설치
+**2. 의존성 설치**
 pip install pyyaml python-nmap scapy requests
 
-# 3. Phase 3 설정 파일 생성 (필수 — 저장소에 포함되지 않음)
-```
+**3. Phase 3 설정 파일 생성 (필수 — 저장소에 포함되지 않음)**
 
-```
-cat > Service_Scanner_Phase3/config.py << 'EOF'
-MAX_WORKERS = 5
-TIMEOUT = 120
-NMAP_STABLE_ARGS = "--open"
-NMAP_SCRIPT_TIMEOUT = 30
-NMAP_VERSION_SCAN_ARGS = "-sV --version-intensity 9"
-VULNERS_API_KEY = ""          # Vulners API 키 (선택)
-NVD_API_KEY = ""              # NVD API 키 (선택, 없어도 동작하나 속도 제한)
-NVD_DATA_DIR = "data"         # 로컬 SQLite DB 경로 (오프라인 모드)
+저장소에는 보안 상의 이유로 `config.py` 파일이 포함되어 있지 않습니다. 프로젝트를 실행하려면 `Service_Scanner_Phase3` 디렉토리 내에 직접 `config.py` 파일을 생성해야 합니다. 
+
+> **⚠️ 보안 주의 (Security Warning):** > 실제 API 키를 코드에 하드코딩한 채로 Git에 푸시하지 마세요. `config.py`는 이미 `.gitignore`에 등록되어 있어야 합니다. 안전한 관리를 위해 환경 변수(`os.getenv`) 사용을 권장합니다.
+
+아래의 템플릿을 복사하여 `config.py`를 생성해 주세요.
+
+
+```python
+# Service_Scanner_Phase3/config.py
+import os
+
+# --- [시스템 설정] ---
+MAX_WORKERS = 4  # 동시에 분석할 포트(스레드) 개수
+TIMEOUT = 350    # 각 포트별 최대 스캔 시간 (초)
+
+# --- [Nmap 스캔 인자 설정] ---
+NMAP_STABLE_ARGS = "-Pn -T3 --max-retries 3 --open"
+NMAP_SCRIPT_TIMEOUT = 180
+NMAP_VERSION_SCAN_ARGS = "-sV --version-all"
+
+# --- [API 키 설정 (보안 주의)] ---
+# 환경변수를 사용하거나, 발급받은 실제 키 문자열을 입력하세요.
+VULNERS_API_KEY = os.getenv("VULNERS_API_KEY", "") # "YOUR_VULNERS_API_KEY"
+NVD_API_KEY = os.getenv("NVD_API_KEY", "")         # "YOUR_NVD_API_KEY"
+
+# --- [Local NVD 설정] ---
+# API 실패 시 사용할 로컬 NVD 데이터 폴더 경로
+NVD_DATA_DIR = os.path.join(os.getcwd(), "data")
+
+# --- [NSE 스크립트 매핑 테이블] (핵심 스캔 전략) ---
+# 서비스명(Key)에 따라 실행할 타겟 맞춤형 NSE 스크립트(Value)를 지정합니다.
 NSE_MAPPING = {
-    "http":    "http-title,http-methods,http-headers,http-auth-finder",
-    "https":   "ssl-cert,ssl-enum-ciphers,http-title",
-    "ssh":     "ssh-auth-methods,ssh-hostkey",
-    "ftp":     "ftp-anon,ftp-bounce",
-    "smtp":    "smtp-commands,smtp-open-relay",
-    "mysql":   "mysql-info,mysql-empty-password,mysql-databases",
-    "mssql":   "ms-sql-info,ms-sql-empty-password",
-    "rdp":     "rdp-enum-encryption",
-    "smb":     "smb-security-mode,smb-vuln-ms17-010",
-    "default": "banner",
+    # Web Service
+    'http': 'http-title,http-headers,http-methods,http-server-header,http-enum',
+    'https': 'ssl-cert,http-title,http-headers,http-methods,http-enum',
+    'http-alt': 'http-title,http-headers,http-methods',
+    'ssl/http': 'ssl-cert,http-title,http-headers',
+
+    # Infrastructure
+    'ssh': 'ssh2-enum-algos,ssh-hostkey,ssh-auth-methods',
+    'ftp': 'ftp-anon,ftp-syst,ftp-vsftpd-backdoor',
+    'telnet': 'telnet-encryption,telnet-ntlm-info',
+    'rdp': 'rdp-enum-encryption,rdp-ntlm-info',
+    
+    # Database
+    'mysql': 'mysql-info,mysql-empty-password,mysql-users,mysql-variables',
+    'postgresql': 'pgsql-info,pgsql-version',
+    'mssql': 'ms-sql-info,ms-sql-config,ms-sql-dump-hashes',
+    'mongodb': 'mongodb-info,mongodb-databases',
+    'redis': 'redis-info',
+    
+    # Mail & DNS
+    'smtp': 'smtp-commands,smtp-open-relay,smtp-enum-users',
+    'domain': 'dns-service-discovery,dns-recursion,dns-nsid',
+
+    # RPC, NFS, Samba
+    'rpcbind': 'rpcinfo', 
+    'nfs': 'nfs-showmount,nfs-ls', 
+    'netbios-ssn': 'smb-os-discovery,smb-enum-shares,smb-enum-users,smb-security-mode',
+    'microsoft-ds': 'smb-os-discovery,smb-enum-shares,smb-security-mode',
+
+    # Backdoors & Remote Shells
+    'bindshell': 'banner', 
+    'java-rmi': 'rmi-dumpregistry', 
+    'irc': 'irc-info,irc-unrealircd-backdoor',
+    'irc-ssl': 'irc-info,irc-unrealircd-backdoor',
+
+    # Legacy Unix & Special Ports
+    'exec': 'rlogin-auth', 
+    'login': 'rlogin-auth',
+    'shell': 'rlogin-auth',
+    'distccd': 'distcc-cve2004-2687',
+    'vnc': 'vnc-info,vnc-title',
+    'x11': 'x11-access',
+    'ajp13': 'ajp-auth',
+    'ipp': 'cups-info',
+    'ppp': 'http-title,http-headers,http-methods,http-enum,banner',
+
+    # Default (알 수 없는 서비스에 대한 적극적 탐색)
+    'default': 'banner, safe' 
 }
-EOF
+```
 
 ---
 
