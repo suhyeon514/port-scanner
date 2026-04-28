@@ -3,7 +3,7 @@ import nmap
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import (
+from Service_Scanner_Phase3.Service_Scanner_Phase3.config import (
     MAX_WORKERS,
     TIMEOUT,
     NMAP_STABLE_ARGS,

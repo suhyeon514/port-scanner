@@ -1,5 +1,5 @@
 # core/dispatcher.py
-from config import NSE_MAPPING
+from Service_Scanner_Phase3.Service_Scanner_Phase3.config import NSE_MAPPING
 import re
 
 def get_scripts_for_service(service_name):

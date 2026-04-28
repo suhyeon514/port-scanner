@@ -1,7 +1,7 @@
 # utils/cve_lookup.py
 import os
 import sqlite3
-from config import NVD_DATA_DIR
+from Service_Scanner_Phase3.Service_Scanner_Phase3.config import NVD_DATA_DIR
 
 DB_PATH = os.path.join(NVD_DATA_DIR, "nvd_vuln.db")
 

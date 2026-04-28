@@ -7,7 +7,7 @@ import sqlite3
 import time
 import re
 import requests
-from config import VULNERS_API_KEY, NVD_DATA_DIR, NVD_API_KEY
+from Service_Scanner_Phase3.Service_Scanner_Phase3.config import VULNERS_API_KEY, NVD_DATA_DIR, NVD_API_KEY
 from utils.cve_lookup import find_cves_by_cpe
 
 
